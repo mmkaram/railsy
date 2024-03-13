@@ -1,12 +1,15 @@
-use reqwest::{blocking, header::{CONTENT_LENGTH, COOKIE}};
+use reqwest::{
+    blocking,
+    header::{CONTENT_LENGTH, COOKIE},
+};
 use serde::Deserialize;
 use std::collections::hash_map;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-	post().await?;
-	
-	Ok(())
+    post().await?;
+
+    Ok(())
 }
 
 fn blocking_get() -> Result<(), Box<dyn std::error::Error>> {
@@ -15,7 +18,7 @@ fn blocking_get() -> Result<(), Box<dyn std::error::Error>> {
 
     let body = res?.text()?;
     println!("body = {}", body);
-    
+
     Ok(())
 }
 
