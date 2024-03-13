@@ -6,11 +6,11 @@ fn main () {
     blocking_get().unwrap();
 }
 
-fn blocking_get() -> Result<(), std::error::Error> {
-    // let res = reqwest::blocking::post("https://api.mail.tm/accounts");
-    let res = reqwest::blocking::get("https://google.com");
+fn blocking_get() -> Result<(), Box<dyn std::error::Error>> {
+    let res = reqwest::blocking::get("https://api.mail.tm/accounts");
+    // let res = reqwest::blocking::get("https://google.com");
 
-    let body = res.text()?;
+    let body = res?.text()?;
     println!("body = {}", body);
     
     Ok(())
