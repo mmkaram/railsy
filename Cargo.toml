@@ -2,6 +2,14 @@
 name = "railsy"
 version = "0.1.0"
 edition = "2021"
+authors = ["Mahdy Karam"]
+description = "Temporary email client in Rust"
+readme = "README.md"
+homepage = "https://mmkaram.github.io/railsy.html"
+repository = "https://github.com/mmkaram/railsy/"
+license = "MIT"
+license-file = "LICENSE"
+keywords = ["email"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
