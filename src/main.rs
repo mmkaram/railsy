@@ -25,10 +25,9 @@ fn blocking_get() -> Result<(), Box<dyn std::error::Error>> {
 async fn post() -> Result<(), Box<dyn std::error::Error>> {
     let client = reqwest::Client::new();
     let res = client
+        // .post("https://api.mail.tm/domains?page=1")
         .post("https://api.mail.tm/accounts")
-        // .header(CONTENT_LENGTH, 27)
         .timeout(tokio::time::Duration::from_secs(5))
-        // .body("the exact body that is sent")
         .send()
         .await?;
 
@@ -37,3 +36,4 @@ async fn post() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
