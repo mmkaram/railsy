@@ -26,9 +26,9 @@ async fn post() -> Result<(), Box<dyn std::error::Error>> {
     let client = reqwest::Client::new();
     let res = client
         .post("https://api.mail.tm/accounts")
-        .header(CONTENT_LENGTH, 27)
+        // .header(CONTENT_LENGTH, 27)
         .timeout(tokio::time::Duration::from_secs(5))
-        .body("the exact body that is sent")
+        // .body("the exact body that is sent")
         .send()
         .await?;
 
