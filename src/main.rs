@@ -3,8 +3,10 @@ use serde::Deserialize;
 use std::collections::hash_map;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Erorr>> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	post().await?;
+	
+	Ok(())
 }
 
 fn blocking_get() -> Result<(), Box<dyn std::error::Error>> {
@@ -20,7 +22,7 @@ fn blocking_get() -> Result<(), Box<dyn std::error::Error>> {
 async fn post() -> Result<(), Box<dyn std::error::Error>> {
     let client = reqwest::Client::new();
     let res = client
-        .post("https://api.mail.im/accounts")
+        .post("https://api.mail.tm/accounts")
         .header(CONTENT_LENGTH, 27)
         .timeout(tokio::time::Duration::from_secs(5))
         .body("the exact body that is sent")
