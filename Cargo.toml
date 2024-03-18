@@ -8,7 +8,6 @@ readme = "README.md"
 homepage = "https://mmkaram.github.io/railsy.html"
 repository = "https://github.com/mmkaram/railsy/"
 license = "MIT"
-license-file = "LICENSE"
 keywords = ["email"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -16,4 +15,5 @@ keywords = ["email"]
 [dependencies]
 reqwest = {version = "0.11.14", features = ["default", "blocking", "cookies", "json", "socks"] }
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0.114"
 tokio = {version = "1", features = ["full"] }
