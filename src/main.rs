@@ -24,16 +24,34 @@ struct Message {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct MessageDetail {
+    #[serde(default)]
     id: String,
+    #[serde(default)]
     subject: String,
+    #[serde(default)]
     intro: String,
+    #[serde(default)]
     text: String,
+    #[serde(default)]
+    html: Option<String>,
+    #[serde(default)]
     from: EmailAddress,
+    #[serde(default)]
+    to: Vec<EmailAddress>,
+    #[serde(default)]
+    seen: bool,
+    #[serde(default)]
+    flagged: bool,
+    #[serde(rename = "downloadUrl", default)]
+    download_url: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 struct EmailAddress {
+    #[serde(default)]
     address: String,
+    #[serde(default)]
+    name: Option<String>,
 }
 
 async fn create_email_account(client: &Client, base_url: &str) -> Result<(Account, String, Token), Box<dyn Error>> {
@@ -101,8 +119,19 @@ async fn get_message_by_id(client: &Client, base_url: &str, message_id: &str) ->
         .get(format!("{}/messages/{}", base_url, message_id))
         .send()
         .await?;
-    let message: MessageDetail = response.json().await?;
-    Ok(message)
+    
+    if !response.status().is_success() {
+        return Err(format!("Failed to fetch message. Status: {}", response.status()).into());
+    }
+
+    let text = response.text().await?;
+    match serde_json::from_str(&text) {
+        Ok(message) => Ok(message),
+        Err(e) => {
+            println!("Debug - Response body: {}", text);
+            Err(format!("Failed to parse message: {}", e).into())
+        }
+    }
 }
 
 async fn delete_message(client: &Client, base_url: &str, message_id: &str) -> Result<(), Box<dyn Error>> {
@@ -176,9 +205,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 
                 match get_message_by_id(&auth_client, base_url, id.trim()).await {
                     Ok(message) => {
-                        println!("\nFrom: {}", message.from.address);
+                        println!("\nFrom: {} {}", 
+                            message.from.address,
+                            message.from.name.unwrap_or_default());
                         println!("Subject: {}", message.subject);
                         println!("Content:\n{}", message.text);
+                        if !message.seen {
+                            println!("Status: Unread");
+                        }
+                        if let Some(url) = message.download_url {
+                            println!("Download URL: {}", url);
+                        }
                     },
                     Err(e) => println!("Error reading message: {}", e),
                 }
