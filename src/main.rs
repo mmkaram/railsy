@@ -1,11 +1,7 @@
-use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::error::Error;
-
-#[derive(Debug, Serialize, Deserialize)]
-struct Domain {
-    domain: String,
-}
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Account {
@@ -27,19 +23,21 @@ struct Message {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let client = reqwest::Client::new();
+    let client = Client::new();
     let base_url = "https://api.mail.tm";
 
-    println!("Hello?");
     // Get available domains
-    let domains: Vec<Domain> = client
-        .get(format!("{}/domains", base_url))
-        .send()
-        .await?
-        .json()
-        .await?;
+    let response = client.get(format!("{}/domains", base_url)).send().await?;
+    let body: Value = response.json().await?;
+    
+    let domains: Vec<String> = body["hydra:member"]
+        .as_array()
+        .unwrap_or(&Vec::new())
+        .iter()
+        .filter_map(|domain| domain["domain"].as_str().map(String::from))
+        .collect();
 
-    let domain = &domains[0].domain;
+    let domain = &domains[0];
     println!("Using domain: {}", domain);
 
     // Generate a random email address
@@ -78,22 +76,30 @@ async fn main() -> Result<(), Box<dyn Error>> {
     println!("Token received: {}", token.token);
 
     // Set up authenticated client
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        AUTHORIZATION,
-        HeaderValue::from_str(&format!("Bearer {}", token.token))?,
-    );
-    let auth_client = reqwest::Client::builder()
-        .default_headers(headers)
+    let auth_client = Client::builder()
+        .default_headers({
+            let mut headers = reqwest::header::HeaderMap::new();
+            headers.insert(
+                reqwest::header::AUTHORIZATION,
+                format!("Bearer {}", token.token).parse().unwrap(),
+            );
+            headers
+        })
         .build()?;
 
     // Check for messages
-    let messages: Vec<Message> = auth_client
+    let response = auth_client
         .get(format!("{}/messages", base_url))
         .send()
-        .await?
-        .json()
         .await?;
+
+    let messages_body: Value = response.json().await?;
+    let messages: Vec<Message> = messages_body["hydra:member"]
+        .as_array()
+        .unwrap_or(&Vec::new())
+        .iter()
+        .filter_map(|msg| serde_json::from_value(msg.clone()).ok())
+        .collect();
 
     println!("Number of messages: {}", messages.len());
 
