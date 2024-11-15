@@ -12,8 +12,8 @@
       };
       
       # Define your package
-      myPackage = pkgs.rustPlatform.buildRustPackage {
-        pname = "my-package"; # Change this to your package name
+      railsy = pkgs.rustPlatform.buildRustPackage {
+        pname = "railsy"; # Change this to your package name
         version = "0.1.0";    # Change this to your version
         
         src = ./.;  # Use current directory as source
@@ -33,11 +33,12 @@
         nativeBuildInputs = with pkgs; [
           pkg-config
         ];
+        PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig";
       };
     in
     {
       packages.${system} = {
-        default = myPackage;
+        default = railsy;
       };
 
       devShells.${system}.default = pkgs.mkShell {
