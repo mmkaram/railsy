@@ -2,6 +2,7 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::error::Error;
+use std::io::{self, Write};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Account {
@@ -21,11 +22,21 @@ struct Message {
     intro: String,
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
-    let client = Client::new();
-    let base_url = "https://api.mail.tm";
+#[derive(Debug, Serialize, Deserialize)]
+struct MessageDetail {
+    id: String,
+    subject: String,
+    intro: String,
+    text: String,
+    from: EmailAddress,
+}
 
+#[derive(Debug, Serialize, Deserialize)]
+struct EmailAddress {
+    address: String,
+}
+
+async fn create_email_account(client: &Client, base_url: &str) -> Result<(Account, String, Token), Box<dyn Error>> {
     // Get available domains
     let response = client.get(format!("{}/domains", base_url)).send().await?;
     let body: Value = response.json().await?;
@@ -36,7 +47,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .iter()
         .filter_map(|domain| domain["domain"].as_str().map(String::from))
         .collect();
-
+    
     let domain = &domains[0];
     println!("Using domain: {}", domain);
 
@@ -44,7 +55,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let random_username = format!("user{}", rand::random::<u32>());
     let email = format!("{}@{}", random_username, domain);
     let password = "your_secure_password";
-
     println!("Generated email: {}", email);
 
     // Create an account
@@ -59,8 +69,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .json()
         .await?;
 
-    println!("Account created: {:?}", account);
-
     // Get authentication token
     let token: Token = client
         .post(format!("{}/token", base_url))
@@ -73,7 +81,63 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .json()
         .await?;
 
-    println!("Token received: {}", token.token);
+    Ok((account, email, token))
+}
+
+async fn get_messages(client: &Client, base_url: &str) -> Result<Vec<Message>, Box<dyn Error>> {
+    let response = client.get(format!("{}/messages", base_url)).send().await?;
+    let messages_body: Value = response.json().await?;
+    let messages: Vec<Message> = messages_body["hydra:member"]
+        .as_array()
+        .unwrap_or(&Vec::new())
+        .iter()
+        .filter_map(|msg| serde_json::from_value(msg.clone()).ok())
+        .collect();
+    Ok(messages)
+}
+
+async fn get_message_by_id(client: &Client, base_url: &str, message_id: &str) -> Result<MessageDetail, Box<dyn Error>> {
+    let response = client
+        .get(format!("{}/messages/{}", base_url, message_id))
+        .send()
+        .await?;
+    let message: MessageDetail = response.json().await?;
+    Ok(message)
+}
+
+async fn delete_message(client: &Client, base_url: &str, message_id: &str) -> Result<(), Box<dyn Error>> {
+    let response = client
+        .delete(format!("{}/messages/{}", base_url, message_id))
+        .send()
+        .await?;
+    
+    if response.status().is_success() {
+        println!("Message deleted successfully");
+        Ok(())
+    } else {
+        Err("Failed to delete message".into())
+    }
+}
+
+fn print_menu() {
+    println!("\nEmail Client Menu:");
+    println!("1. View Messages");
+    println!("2. Read Message (by ID)");
+    println!("3. Delete Message");
+    println!("4. Exit");
+    print!("Enter your choice: ");
+    io::stdout().flush().unwrap();
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
+    let client = Client::new();
+    let base_url = "https://api.mail.tm";
+
+    println!("Creating new email account...");
+    let (account, email, token) = create_email_account(&client, base_url).await?;
+    println!("Account created successfully!");
+    println!("Your email address is: {}", email);
 
     // Set up authenticated client
     let auth_client = Client::builder()
@@ -87,36 +151,66 @@ async fn main() -> Result<(), Box<dyn Error>> {
         })
         .build()?;
 
-    // Check for messages
-    let response = auth_client
-        .get(format!("{}/messages", base_url))
-        .send()
-        .await?;
-
-    let messages_body: Value = response.json().await?;
-    let messages: Vec<Message> = messages_body["hydra:member"]
-        .as_array()
-        .unwrap_or(&Vec::new())
-        .iter()
-        .filter_map(|msg| serde_json::from_value(msg.clone()).ok())
-        .collect();
-
-    println!("Number of messages: {}", messages.len());
-
-    for message in messages {
-        println!("Message: {:?}", message);
-    }
-
-    // Delete the account (optional)
-    let delete_response = auth_client
-        .delete(format!("{}/accounts/{}", base_url, account.id))
-        .send()
-        .await?;
-
-    if delete_response.status().is_success() {
-        println!("Account deleted successfully");
-    } else {
-        println!("Failed to delete account");
+    loop {
+        print_menu();
+        
+        let mut choice = String::new();
+        io::stdin().read_line(&mut choice)?;
+        
+        match choice.trim() {
+            "1" => {
+                let messages = get_messages(&auth_client, base_url).await?;
+                println!("\nMessages ({}):", messages.len());
+                for msg in messages {
+                    println!("ID: {}", msg.id);
+                    println!("Subject: {}", msg.subject);
+                    println!("Preview: {}", msg.intro);
+                    println!("---");
+                }
+            },
+            "2" => {
+                print!("Enter message ID: ");
+                io::stdout().flush().unwrap();
+                let mut id = String::new();
+                io::stdin().read_line(&mut id)?;
+                
+                match get_message_by_id(&auth_client, base_url, id.trim()).await {
+                    Ok(message) => {
+                        println!("\nFrom: {}", message.from.address);
+                        println!("Subject: {}", message.subject);
+                        println!("Content:\n{}", message.text);
+                    },
+                    Err(e) => println!("Error reading message: {}", e),
+                }
+            },
+            "3" => {
+                print!("Enter message ID to delete: ");
+                io::stdout().flush().unwrap();
+                let mut id = String::new();
+                io::stdin().read_line(&mut id)?;
+                
+                match delete_message(&auth_client, base_url, id.trim()).await {
+                    Ok(_) => println!("Message deleted successfully"),
+                    Err(e) => println!("Error deleting message: {}", e),
+                }
+            },
+            "4" => {
+                println!("Exiting...");
+                // Delete the account before exiting
+                let delete_response = auth_client
+                    .delete(format!("{}/accounts/{}", base_url, account.id))
+                    .send()
+                    .await?;
+                
+                if delete_response.status().is_success() {
+                    println!("Account deleted successfully");
+                } else {
+                    println!("Failed to delete account");
+                }
+                break;
+            },
+            _ => println!("Invalid choice, please try again"),
+        }
     }
 
     Ok(())
