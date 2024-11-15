@@ -1,3 +1,6 @@
 # railsy
 Temporary email client in Rust
-> Wip
+Features
+- Generate temporary Email
+- Read messages
+- Delete account
