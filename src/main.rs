@@ -147,9 +147,17 @@ async fn save_message_by_id(
     message_id: &str,
     //) -> Result<String, Box<dyn Error>> {
 ) {
-    _ = match get_message_by_id(&client, &base_url, &message_id).await {
-        Ok(message) => Result::Ok(save_to_file(&message.text, "output.txt")),
-        Err(e) => Result::Err(e),
+    // _ = match get_message_by_id(&client, &base_url, &message_id).await {
+    //     Ok(message) => Result::Ok(save_to_file(&message.text, "output.txt")),
+    //     Err(e) => Result::Err(e),
+    // };
+    _ = match get_message_by_id(&client, base_url, &message_id).await {
+        Ok(message) =>
+        // println!("AHA"),
+        {
+            save_to_file(&message.text, "output.txt").unwrap()
+        }
+        Err(e) => println!("Error on get message when saving {}", e),
     };
 }
 
@@ -291,7 +299,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 io::stdout().flush().unwrap();
                 let mut id = String::new();
                 io::stdin().read_line(&mut id)?;
-                save_message_by_id(&client, base_url, &id).await;
+                save_message_by_id(&auth_client, base_url, &id.trim()).await;
             }
             _ => println!("Invalid choice, please try again"),
         }
