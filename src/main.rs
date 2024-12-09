@@ -299,7 +299,26 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 io::stdout().flush().unwrap();
                 let mut id = String::new();
                 io::stdin().read_line(&mut id)?;
-                save_message_by_id(&auth_client, base_url, &id.trim()).await;
+                //save_message_by_id(&auth_client, base_url, &id.trim()).await;
+                match get_message_by_id(&auth_client, base_url, id.trim()).await {
+                    Ok(message) => {
+                        println!(
+                            "\nFrom: {} {}",
+                            message.from.address,
+                            message.from.name.unwrap_or_default()
+                        );
+                        println!("Subject: {}", message.subject);
+                        println!("Content:\n{}", message.text);
+                        save_to_file(&message.text, "output.txt");
+                        if !message.seen {
+                            println!("Status: Unread");
+                        }
+                        if let Some(url) = message.download_url {
+                            println!("Download URL: {}", url);
+                        }
+                    }
+                    Err(e) => println!("Error reading message: {}", e),
+                }
             }
             _ => println!("Invalid choice, please try again"),
         }
