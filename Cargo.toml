@@ -5,12 +5,10 @@ edition = "2021"
 authors = ["Mahdy Karam"]
 description = "Temporary email client in Rust"
 readme = "README.md"
-homepage = "https://mmkaram.github.io/railsy.html"
+homepage = "https://mmkaram.github.io/posts/railsy/"
 repository = "https://github.com/mmkaram/railsy/"
 license = "MIT"
 keywords = ["email"]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 reqwest = { version = "0.11", features = ["json"] }
